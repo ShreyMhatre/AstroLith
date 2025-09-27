@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Calibration</title>
+</head>
+<body>
+<h1>Camera Calibration</h1>
+<video id="video" autoplay width="640" height="480"></video><br>
+<button onclick="capture()">Capture</button>
+<p id="count">Captured: 0</p>
+
+<script>
+    let count = 0;
+    const video = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        video.srcObject = stream;
+    });
+
+    function capture() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        canvas.toBlob(blob => {
+            const formData = new FormData();
+            formData.append('image', blob, `frame_${count}.jpg`);
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(() => {
+                count++;
+                document.getElementById('count').textContent = `Captured: ${count}`;
+            });
+        }, 'image/jpeg');
+    }
+</script>
+</body>
+</html>
