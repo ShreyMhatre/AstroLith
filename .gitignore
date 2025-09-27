@@ -76,3 +76,8 @@ test-output/
 assets/
 demo/
 markers/
+
+server/uploads/
+calibration_profile.npz
+
+.idea/

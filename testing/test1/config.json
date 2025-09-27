@@ -1,0 +1,8 @@
+{
+  "checkerboard_size": [9, 6],
+  "square_size": 0.02,
+  "min_corner_move": 30.0,
+  "min_laplacian_var": 100.0,
+  "frame_skip": 5,
+  "max_frames": 20
+}

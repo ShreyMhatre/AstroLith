@@ -1,0 +1,2 @@
+Support for various video types.
+Support for multiple segmentation models through a standardized interface.
