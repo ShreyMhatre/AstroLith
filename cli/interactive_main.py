@@ -39,54 +39,86 @@ class InteractivePlot:
         self.results = results
         self.marker_size_cm = marker_size_cm
         
-        # --- CORE FIX: Reorder the initialization ---
-        # 1. First, create the figure and axes so they exist.
+        # Create the figure and axes
         self.fig, self.ax = plt.subplots(figsize=(12, 8))
         
-        # 2. Then, connect the event handlers.
+        # Connect event handlers
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
         self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
         
-        # 3. Now that the plot exists, initialize the application state.
-        #    This will call update_plot(), which can now safely access self.ax.
+        # Initialize the application state
         self.reset_state()
-        # ----------------------------------------------
 
     def reset_state(self):
         """Resets the measurement state to the beginning."""
         print("\n--- Resetting Axes ---")
-        # Initialize 2D vectors and lengths from high-accuracy corners
-        corners5 = self.results['corners_data'][5][0].astype(int)
-        corners15 = self.results['corners_data'][15][0].astype(int)
-        self.common_origin_2d = ((corners5[2] + corners15[3]) / 2.0).astype(int)
         
-        width_dir_vec = corners5[3] - corners5[2]
-        length_dir_vec = corners15[2] - corners15[3]
+        # Get high-accuracy corners
+        corners5 = self.results['corners_data'][5][0].astype(np.float64)
+        corners15 = self.results['corners_data'][15][0].astype(np.float64)
+        
+        # Define the common origin (between markers 5 and 15)
+        self.common_origin_2d = ((corners5[2] + corners15[3]) / 2.0)
+        
+        # === CRITICAL FIX: PROPER PIXEL-TO-CM CALIBRATION ===
+        # The markers are positioned such that:
+        # - Marker 5 is to the LEFT of the origin
+        # - Marker 15 is to the RIGHT of the origin
+        # - Both markers are 5cm × 5cm
+        # - The distance between their inner edges = 0 (they're adjacent)
+        
+        # Calculate direction vectors
+        width_dir_vec = corners5[3] - corners5[2]   # Left to right along marker 5's bottom edge
+        length_dir_vec = corners15[2] - corners15[3] # Back to front along marker 15's bottom edge
+        
+        # Height vectors from both markers
         height_dir_vec_5 = corners5[1] - corners5[2]
         height_dir_vec_15 = corners15[0] - corners15[3]
-        avg_height_dir_vec = ((height_dir_vec_5 + height_dir_vec_15) / 2.0).astype(int)
+        avg_height_dir_vec = (height_dir_vec_5 + height_dir_vec_15) / 2.0
         
+        # Calculate the ACTUAL pixel length of each marker edge
+        # These should represent the physical 5cm marker size
+        marker5_width_pixels = np.linalg.norm(corners5[3] - corners5[2])  # Bottom edge of marker 5
+        marker15_length_pixels = np.linalg.norm(corners15[2] - corners15[3])  # Bottom edge of marker 15
+        marker5_height_pixels = np.linalg.norm(corners5[1] - corners5[2])
+        marker15_height_pixels = np.linalg.norm(corners15[0] - corners15[3])
+        
+        # Calculate pixels-per-cm ratio for each axis
+        # Use the actual detected marker edges as the calibration reference
+        self.pixels_per_cm = {
+            'width': marker5_width_pixels / self.marker_size_cm,
+            'length': marker15_length_pixels / self.marker_size_cm,
+            'height': (marker5_height_pixels + marker15_height_pixels) / (2.0 * self.marker_size_cm)
+        }
+        
+        print(f"Calibration - Pixels per cm:")
+        print(f"  Width:  {self.pixels_per_cm['width']:.2f} px/cm")
+        print(f"  Length: {self.pixels_per_cm['length']:.2f} px/cm")
+        print(f"  Height: {self.pixels_per_cm['height']:.2f} px/cm")
+        
+        # Store direction vectors and unit vectors
         self.dir_vectors = {
-            'width': width_dir_vec, 'length': length_dir_vec, 'height': avg_height_dir_vec
+            'width': width_dir_vec,
+            'length': length_dir_vec,
+            'height': avg_height_dir_vec
         }
         self.unit_dir_vectors = {k: v / np.linalg.norm(v) for k, v in self.dir_vectors.items()}
         
-        self.initial_pixel_lengths = {
-            'width': np.linalg.norm(width_dir_vec),
-            'length': np.linalg.norm(length_dir_vec),
-            'height': np.linalg.norm(avg_height_dir_vec)
-        }
-
+        # Initialize edge endpoints to the marker size
         self.edge_endpoints = {
             'width': self.common_origin_2d + width_dir_vec,
             'length': self.common_origin_2d + length_dir_vec,
             'height': self.common_origin_2d + avg_height_dir_vec
         }
+        
+        # Initialize edge lengths (start at marker size)
         self.edge_lengths_cm = {
-            'Width': self.marker_size_cm, 'Length': self.marker_size_cm, 'Height': self.marker_size_cm
+            'Width': self.marker_size_cm,
+            'Length': self.marker_size_cm,
+            'Height': self.marker_size_cm
         }
         
-        self.current_state = 'length' # Start by measuring length
+        self.current_state = 'length'  # Start by measuring length
         self.update_plot()
         
     def on_key_press(self, event):
@@ -115,15 +147,15 @@ class InteractivePlot:
         projection_length = origin_to_click_vec.dot(unit_axis_vec)
         
         new_endpoint = self.common_origin_2d + unit_axis_vec * projection_length
-        self.edge_endpoints[closest_axis] = new_endpoint.astype(int)
-
-        # Calculate and update the real-world length
+        self.edge_endpoints[closest_axis] = new_endpoint
+        
+        # === CORRECTED MEASUREMENT CALCULATION ===
+        # Convert pixel length to cm using the calibrated pixels_per_cm ratio
         new_pixel_length = np.linalg.norm(new_endpoint - self.common_origin_2d)
-        initial_pixel_length = self.initial_pixel_lengths[closest_axis]
-        new_cm_length = (new_pixel_length / initial_pixel_length) * self.marker_size_cm
+        new_cm_length = new_pixel_length / self.pixels_per_cm[closest_axis]
         self.edge_lengths_cm[closest_axis.capitalize()] = new_cm_length
         
-        print(f"Updated {closest_axis.capitalize()}: {new_cm_length:.2f} cm")
+        print(f"Updated {closest_axis.capitalize()}: {new_cm_length:.2f} cm ({new_pixel_length:.1f} pixels)")
         
         # Advance the state
         if self.current_state == 'length': self.current_state = 'width'
@@ -142,10 +174,10 @@ class InteractivePlot:
         cv2.aruco.drawDetectedMarkers(frame_with_outlines, [self.results['corners_data'][15]], None)
 
         # Draw the extended axes
-        cv2.line(frame_with_outlines, tuple(self.common_origin_2d), tuple(self.edge_endpoints['width']), (255, 0, 0), 3)
-        cv2.line(frame_with_outlines, tuple(self.common_origin_2d), tuple(self.edge_endpoints['length']), (0, 0, 255), 3)
-        cv2.line(frame_with_outlines, tuple(self.common_origin_2d), tuple(self.edge_endpoints['height']), (0, 255, 0), 3)
-        cv2.circle(frame_with_outlines, tuple(self.common_origin_2d), 8, (255, 255, 0), -1)
+        cv2.line(frame_with_outlines, tuple(self.common_origin_2d.astype(int)), tuple(self.edge_endpoints['width'].astype(int)), (255, 0, 0), 3)
+        cv2.line(frame_with_outlines, tuple(self.common_origin_2d.astype(int)), tuple(self.edge_endpoints['length'].astype(int)), (0, 0, 255), 3)
+        cv2.line(frame_with_outlines, tuple(self.common_origin_2d.astype(int)), tuple(self.edge_endpoints['height'].astype(int)), (0, 255, 0), 3)
+        cv2.circle(frame_with_outlines, tuple(self.common_origin_2d.astype(int)), 8, (255, 255, 0), -1)
 
         # Draw the length text
         y_pos = 0.05
@@ -171,7 +203,7 @@ class InteractivePlot:
 def main():
     args = parse_args()
     
-    # --- 1. Load Data and Perform Initial Pose Estimation ---
+    # Load Data and Perform Initial Pose Estimation
     camera_matrix, dist_coeffs = utils.load_calibration_profile(args.profile)
     if camera_matrix is None: sys.exit(1)
     
@@ -191,7 +223,7 @@ def main():
         print("Could not find the required markers in the image. Exiting.")
         return
 
-    # --- 2. Launch the Interactive Plot ---
+    # Launch the Interactive Plot
     plot = InteractivePlot(original_frame, results, marker_size_cm)
     plt.show()
 
