@@ -1,6 +1,6 @@
-## AstroLith
+## CubitScan
 
-AstroLith is a Python-based image processing tool designed to calculate the volumetric weight of shipping containers and boxes using computer vision techniques. This project leverages aruco marker stickers and camera calibration to measure the physical dimensions of boxes, offering a contact-free, efficient alternative to traditional measurement tools.
+CubitScan is a Python-based image processing tool designed to calculate the volumetric weight of shipping containers and boxes using computer vision techniques. This project leverages aruco marker stickers and camera calibration to measure the physical dimensions of boxes, offering a contact-free, efficient alternative to traditional measurement tools.
 
 ### Project Aim
 The main goal is to help shipping companies and logistics services measure the length, width, and height of customer-provided containers using images, especially when container dimensions are unknown. This facilitates accurate volumetric weight calculation, essential for determining shipping costs.
@@ -45,4 +45,5 @@ For the above test image:
 ### Important Notes
 - Optimal results are achieved when the camera angle is 15 to 25 degrees relative to the ground plane.
 - The automatic measurement system might not always find the accurate physical edges; corrections can be made by clicking on the desired axes length.
+
 - It is suggested to keep the axes length slightly extended outside the actual edges of the box (2-5 pixels extra).
