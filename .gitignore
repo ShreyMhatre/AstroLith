@@ -73,7 +73,10 @@ cli/__pycache__/
 test-output/
 
 #static files
-assets/
+assets/calibration
+assets/demo
+assets/markers
+assets/profiles
 demo/
 markers/
 
