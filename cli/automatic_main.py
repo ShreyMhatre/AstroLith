@@ -156,7 +156,7 @@ class HybridMeasurement:
         for name in measurement_order:
             if name in self.measurements_cm:
                 length = self.measurements_cm[name]
-                display_texts.append(f"{name}: {length:.1f} cm")
+                display_texts.append(f"{name}: {length:.2f} cm")
 
         # Calculate and add Volumetric Weight
         if all(k in self.measurements_cm for k in ('Width', 'Length', 'Height')):
