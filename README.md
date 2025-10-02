@@ -30,3 +30,19 @@ The main goal is to help shipping companies and logistics services measure the l
 ### Limitations
 - Efficiency may vary depending on image quality and marker detection.
 - Not an industrial solution, but a novel approach for quick estimates.
+
+### Example Output
+![Example Output](assets/output_check/most_accurate_till_now.png)
+
+#### Actual Measurements of Sample Image
+For the above test image:
+- Height: 8.5 cm
+- Length: 23.5 cm
+- Width: 18.5 cm
+- Volumetric Weight: 0.74 kg
+- Square Size: 5 cm
+
+### Important Notes
+- Optimal results are achieved when the camera angle is 15 to 25 degrees relative to the ground plane.
+- The automatic measurement system might not always find the accurate physical edges; corrections can be made by clicking on the desired axes length.
+- It is suggested to keep the axes length slightly extended outside the actual edges of the box (2-5 pixels extra).
